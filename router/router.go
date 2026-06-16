@@ -70,4 +70,9 @@ func Setup(e *echo.Echo) {
 	private.GET("/transactions", handler.GetMyTransactions)
 	private.POST("/transactions/:id/complete", handler.CompleteTransaction)
 	private.POST("/transactions/:id/review", handler.CreateReview)
+
+	// DM（ダイレクトメッセージ）
+	private.GET("/messages", handler.GetConversations)
+	private.GET("/messages/:id", handler.GetMessages)
+	private.POST("/messages/:id", handler.SendMessage)
 }

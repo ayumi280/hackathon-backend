@@ -46,6 +46,7 @@ func Init() {
 		&model.Transaction{},
 		&model.Review{},
 		&model.Follow{},
+		&model.Message{},
 	)
 	if err != nil {
 		log.Fatalf("マイグレーション失敗: %v", err)
