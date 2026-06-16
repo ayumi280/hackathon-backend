@@ -1,0 +1,54 @@
+substitutions:
+  _REGION: us-central1
+  _SERVICE: hackathon-backend
+  _REPO: hackathon-backend             # Artifact Registryのリポジトリ名（セクション2で作成済み）
+  _INSTANCE_ID: PLACEHOLDER_CLOUD_SQL_INSTANCE_ID  # 例: uttc
+
+steps:
+  # ① Dockerイメージをビルド
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$COMMIT_SHA'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:latest'
+      - '.'
+
+  # ② Artifact Registryにプッシュ（COMMIT_SHAタグ）
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$COMMIT_SHA'
+
+  # ③ Artifact Registryにプッシュ（latestタグ）
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:latest'
+
+  # ④ Cloud Runにデプロイ
+  #    - Secret ManagerはGoコード側がADCで直接アクセスするため、ここでは GOOGLE_CLOUD_PROJECT のみ設定
+  #    - Cloud SQLはUnixソケット接続（mysql-host シークレットと一致させること）
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE}'
+      - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$COMMIT_SHA'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--add-cloudsql-instances=$PROJECT_ID:${_REGION}:${_INSTANCE_ID}'
+      - '--set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID'
+
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$COMMIT_SHA'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:latest'
+
+# ビルドタイムアウト（デフォルト10分 → 20分に延長）
+timeout: '1200s'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

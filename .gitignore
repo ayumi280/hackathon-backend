@@ -1,0 +1,17 @@
+# サービスアカウントキー（絶対にコミットしない）
+service-account-key.json
+*.json.key
+
+# ローカル環境変数
+.env
+.env.local
+
+# Goビルド成果物
+server
+*.exe
+
+# エディタ・OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
