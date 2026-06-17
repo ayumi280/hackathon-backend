@@ -7,9 +7,9 @@ require (
 	cloud.google.com/go/storage v1.62.3
 	cloud.google.com/go/vision/v2 v2.14.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/google/generative-ai-go v0.19.0
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.15.4
-	github.com/openai/openai-go v1.12.0
 	golang.org/x/crypto v0.53.0
 	google.golang.org/api v0.284.0
 	gorm.io/driver/mysql v1.6.0

@@ -46,8 +46,9 @@ func Setup(e *echo.Echo) {
 	// 画像アップロード
 	private.POST("/upload", handler.UploadImage)
 
-	// AIアシスト
+	// AIアシスト（商品説明生成・質問応答）
 	private.POST("/ai/assist", handler.AIAssist)
+	private.POST("/ai/qa", handler.AIQnA)
 
 	// 商品
 	private.POST("/items", handler.CreateItem)

@@ -14,7 +14,7 @@ import (
 // secretMapping はSecret Manager上のシークレット名→環境変数名のマッピング
 var secretMapping = map[string]string{
 	"jwt-secret":      "JWT_SECRET",
-	"openai-api-key":  "OPENAI_API_KEY",
+	"gemini-api-key":  "GEMINI_API_KEY",
 	"mysql-user":      "MYSQL_USER",
 	"mysql-pwd":       "MYSQL_PWD",
 	"mysql-host":      "MYSQL_HOST",
