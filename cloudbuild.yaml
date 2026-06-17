@@ -2,7 +2,7 @@ substitutions:
   _REGION: us-central1
   _SERVICE: hackathon-backend
   _REPO: hackathon-backend             # Artifact Registryのリポジトリ名（セクション2で作成済み）
-  _INSTANCE_ID: PLACEHOLDER_CLOUD_SQL_INSTANCE_ID  # 例: uttc
+  _INSTANCE_ID: hackathon-db
 
 steps:
   # ① Dockerイメージをビルド
