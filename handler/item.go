@@ -3,8 +3,10 @@ package handler
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -227,12 +229,27 @@ func UploadImage(c echo.Context) error {
 
 	ctx := context.Background()
 
-	// ローカル開発（K_SERVICE未設定）かつ認証情報がない場合はプレースホルダーURLを返す
 	isLocal := os.Getenv("K_SERVICE") == ""
 	keyPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+
+	// ローカル開発時はサーバーのuploadsディレクトリに保存して直接配信
 	if isLocal && keyPath == "" {
-		placeholderURL := fmt.Sprintf("https://placehold.co/400x400?text=%s", file.Filename)
-		return c.JSON(http.StatusOK, map[string]string{"url": placeholderURL})
+		uploadDir := "uploads"
+		if err = os.MkdirAll(uploadDir, 0755); err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "保存先作成失敗")
+		}
+		ext := filepath.Ext(file.Filename)
+		objectName := fmt.Sprintf("%d_%d%s", userID, time.Now().UnixNano(), ext)
+		dst, err := os.Create(filepath.Join(uploadDir, objectName))
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "ファイル保存失敗")
+		}
+		defer dst.Close()
+		if _, err = io.Copy(dst, src); err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "ファイル書き込み失敗")
+		}
+		localURL := fmt.Sprintf("http://localhost:8080/uploads/%s", objectName)
+		return c.JSON(http.StatusOK, map[string]string{"url": localURL})
 	}
 
 	var client *storage.Client

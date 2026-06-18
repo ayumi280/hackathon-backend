@@ -13,6 +13,9 @@ func Setup(e *echo.Echo) {
 	// グローバルミドルウェア
 	e.Use(echomw.Logger())
 	e.Use(echomw.Recover())
+
+	// ローカル開発用: アップロード画像を静的配信
+	e.Static("/uploads", "uploads")
 	e.Use(echomw.CORSWithConfig(echomw.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
