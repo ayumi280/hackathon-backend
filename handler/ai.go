@@ -169,9 +169,11 @@ func generateItemInfo(ctx context.Context, imgBytes []byte, mimeType string, lab
   "suggest_price": 日本円の相場価格（整数、円記号なし）
 }`, labelHint)
 
-	m := client.GenerativeModel("gemini-2.0-flash")
+	m := client.GenerativeModel("gemini-2.5-flash")
+	// genai.ImageData は内部で "image/" を付加するため、サブタイプのみ渡す
+	mimeSubtype := strings.TrimPrefix(mimeType, "image/")
 	resp, err := m.GenerateContent(ctx,
-		genai.ImageData(mimeType, imgBytes),
+		genai.ImageData(mimeSubtype, imgBytes),
 		genai.Text(prompt),
 	)
 	if err != nil {
@@ -220,7 +222,7 @@ func answerQuestion(ctx context.Context, item model.Item, question string) (stri
 【質問】
 %s`, item.Title, item.Description, item.Price, strings.Join(tagNames, ", "), question)
 
-	m := client.GenerativeModel("gemini-2.0-flash")
+	m := client.GenerativeModel("gemini-2.5-flash")
 	resp, err := m.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
 		return "", fmt.Errorf("Gemini呼び出し失敗: %w", err)
