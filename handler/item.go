@@ -226,10 +226,16 @@ func UploadImage(c echo.Context) error {
 	}
 
 	ctx := context.Background()
-	var client *storage.Client
 
-	// Cloud Run上はApplication Default Credentials、ローカルはサービスアカウントキー
+	// ローカル開発（K_SERVICE未設定）かつ認証情報がない場合はプレースホルダーURLを返す
+	isLocal := os.Getenv("K_SERVICE") == ""
 	keyPath := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+	if isLocal && keyPath == "" {
+		placeholderURL := fmt.Sprintf("https://placehold.co/400x400?text=%s", file.Filename)
+		return c.JSON(http.StatusOK, map[string]string{"url": placeholderURL})
+	}
+
+	var client *storage.Client
 	if keyPath != "" {
 		client, err = storage.NewClient(ctx, option.WithCredentialsFile(keyPath))
 	} else {
@@ -240,7 +246,6 @@ func UploadImage(c echo.Context) error {
 	}
 	defer client.Close()
 
-	// ユニークなオブジェクト名を生成
 	objectName := fmt.Sprintf("items/%d/%d_%s", userID, time.Now().UnixNano(), file.Filename)
 	wc := client.Bucket(bucket).Object(objectName).NewWriter(ctx)
 	wc.ContentType = file.Header.Get("Content-Type")
@@ -256,7 +261,6 @@ func UploadImage(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "アップロード完了失敗")
 	}
 
-	// 公開URLを返す
 	publicURL := fmt.Sprintf("https://storage.googleapis.com/%s/%s", bucket, objectName)
 	return c.JSON(http.StatusOK, map[string]string{"url": publicURL})
 }
