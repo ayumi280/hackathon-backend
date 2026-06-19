@@ -60,6 +60,14 @@ func GetItems(c echo.Context) error {
 		query = query.Where("title LIKE ? OR description LIKE ?", like, like)
 	}
 
+	// 価格範囲フィルター
+	if priceMin := c.QueryParam("price_min"); priceMin != "" {
+		query = query.Where("price >= ?", priceMin)
+	}
+	if priceMax := c.QueryParam("price_max"); priceMax != "" {
+		query = query.Where("price <= ?", priceMax)
+	}
+
 	// ソート順
 	switch c.QueryParam("sort") {
 	case "trend":

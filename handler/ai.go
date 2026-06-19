@@ -65,6 +65,107 @@ func AIAssist(c echo.Context) error {
 	return c.JSON(http.StatusOK, result)
 }
 
+// AISearchResponse は自然言語検索の解析結果
+type AISearchResponse struct {
+	Keyword  string  `json:"keyword"`
+	PriceMin *int    `json:"price_min"`
+	PriceMax *int    `json:"price_max"`
+	Sort     string  `json:"sort"`
+	Summary  string  `json:"summary"`
+}
+
+// AISearch は自然言語クエリを Gemini で解析して検索パラメータを返す
+func AISearch(c echo.Context) error {
+	var req struct {
+		Query string `json:"query"`
+	}
+	if err := c.Bind(&req); err != nil || strings.TrimSpace(req.Query) == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "query は必須です")
+	}
+
+	ctx := context.Background()
+	result, err := parseSearchQuery(ctx, req.Query)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "検索解析に失敗しました: "+err.Error())
+	}
+	return c.JSON(http.StatusOK, result)
+}
+
+// parseSearchQuery は Gemini に自然言語クエリを解析させて構造化パラメータを返す
+func parseSearchQuery(ctx context.Context, query string) (*AISearchResponse, error) {
+	client, err := newGeminiClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	prompt := fmt.Sprintf(`日本のフリマアプリの検索クエリを解析し、検索パラメータをJSONで返してください。
+
+検索クエリ: "%s"
+
+【出力形式】コードブロック・説明文なし、JSONのみ：
+{
+  "keyword": "商品名・ブランド・色・素材などのキーワード（なければ空文字）",
+  "price_min": 最低価格（円の整数。「N円以上」「N円から」の場合。それ以外はnull）,
+  "price_max": 最高価格（円の整数。「N円以下」「N円まで」「N円以内」の場合。それ以外はnull）,
+  "sort": "new または trend または price_asc または price_desc",
+  "summary": "検索条件の日本語要約（25文字以内）"
+}
+
+【sortのルール】
+- 「安い順」「安いもの」「格安」「お得」→ price_asc
+- 「高い順」「高級」「プレミアム」→ price_desc
+- 「人気」「トレンド」「売れてる」→ trend
+- それ以外 → new
+
+【例】
+入力: "5000円以下のスニーカー"
+出力: {"keyword":"スニーカー","price_min":null,"price_max":5000,"sort":"new","summary":"5000円以下のスニーカーを検索"}
+
+入力: "1万円以上のカメラ"
+出力: {"keyword":"カメラ","price_min":10000,"price_max":null,"sort":"new","summary":"1万円以上のカメラを検索"}
+
+入力: "古着のデニムジャケット 安い順"
+出力: {"keyword":"古着 デニムジャケット","price_min":null,"price_max":null,"sort":"price_asc","summary":"古着のデニムジャケットを安い順で検索"}
+
+入力: "3000円から8000円のイヤホン"
+出力: {"keyword":"イヤホン","price_min":3000,"price_max":8000,"sort":"new","summary":"3000〜8000円のイヤホンを検索"}`, query)
+
+	m := client.GenerativeModel("gemini-2.5-flash")
+	resp, err := m.GenerateContent(ctx, genai.Text(prompt))
+	if err != nil {
+		return nil, fmt.Errorf("Gemini呼び出し失敗: %w", err)
+	}
+	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
+		return nil, fmt.Errorf("Geminiからのレスポンスが空です")
+	}
+
+	text := extractText(resp.Candidates[0].Content.Parts)
+	text = extractJSON(text)
+
+	var result AISearchResponse
+	if err := json.Unmarshal([]byte(text), &result); err != nil {
+		return nil, fmt.Errorf("JSON解析失敗: %w", err)
+	}
+	if result.Sort == "" {
+		result.Sort = "new"
+	}
+
+	// Gemini が price_min/price_max を混同するケースを補正
+	isMaxQuery := strings.Contains(query, "以下") || strings.Contains(query, "以内") || strings.Contains(query, "まで")
+	isMinQuery := strings.Contains(query, "以上") || strings.Contains(query, "から")
+	if isMaxQuery && result.PriceMin != nil && result.PriceMax == nil {
+		result.PriceMax = result.PriceMin
+		result.PriceMin = nil
+	}
+	if isMinQuery && result.PriceMax != nil && result.PriceMin == nil {
+		result.PriceMin = result.PriceMax
+		result.PriceMax = nil
+	}
+
+	return &result, nil
+}
+
 // AIQnA は商品に関する質問に Gemini が回答する
 func AIQnA(c echo.Context) error {
 	var req struct {

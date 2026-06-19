@@ -37,6 +37,7 @@ func Setup(e *echo.Echo) {
 	public.GET("/users/:id", handler.GetUser)
 	public.GET("/tags/trend", handler.GetTrendTags)
 	public.GET("/categories", handler.GetCategories)
+	public.POST("/ai/search", handler.AISearch)
 
 	// 認証必須ルート
 	private := api.Group("")
