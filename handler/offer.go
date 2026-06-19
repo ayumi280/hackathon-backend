@@ -127,6 +127,14 @@ func BuyItem(c echo.Context) error {
 	buyerID := c.Get("user_id").(uint)
 	itemID, _ := strconv.ParseUint(c.Param("id"), 10, 32)
 
+	var req struct {
+		PaymentMethod string `json:"payment_method"`
+	}
+	c.Bind(&req)
+	if req.PaymentMethod == "" {
+		req.PaymentMethod = "bank"
+	}
+
 	var item model.Item
 	if result := db.DB.First(&item, itemID); result.Error != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "商品が見つかりません")
@@ -139,11 +147,12 @@ func BuyItem(c echo.Context) error {
 	}
 
 	tx := model.Transaction{
-		ItemID:     uint(itemID),
-		BuyerID:    buyerID,
-		SellerID:   item.SellerID,
-		FinalPrice: item.Price,
-		Status:     model.TransactionStatusPending,
+		ItemID:        uint(itemID),
+		BuyerID:       buyerID,
+		SellerID:      item.SellerID,
+		FinalPrice:    item.Price,
+		Status:        model.TransactionStatusPending,
+		PaymentMethod: req.PaymentMethod,
 	}
 	db.DB.Create(&tx)
 	db.DB.Model(&item).Update("status", model.ItemStatusTrading)
